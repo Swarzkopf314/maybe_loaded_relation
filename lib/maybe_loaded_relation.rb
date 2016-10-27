@@ -11,7 +11,7 @@ class MaybeLoadedRelation < SimpleDelegator
 
   # to avoid using self.class
   KLASS = self
-  LOADED_QUERY_METHODS = [:where, :pluck, :find_by]
+  LOADED_QUERY_METHODS = [:where, :pluck, :find_by, :exists?]
 
   def self.abstract_database!(relation)
     (yield new(relation)).__getobj__
@@ -23,6 +23,7 @@ class MaybeLoadedRelation < SimpleDelegator
     @search_in_database = obj.is_a?(ActiveRecord::Relation) && !obj.loaded?
   end
 
+  # functor
   def method_missing(method, *args, &block)
     KLASS.new super
   end
@@ -89,6 +90,10 @@ class MaybeLoadedRelation < SimpleDelegator
     relation.find do |obj|
       realizes_all_opts?(obj, opts)
     end
+  end
+
+  def self.loaded_exists?(relation)
+    relation.any?
   end
 
   raise "You need to define all LOADED_QUERY_METHODS!" if LOADED_QUERY_METHODS.any? {|method| !self.respond_to? "loaded_#{method}"}
