@@ -11,10 +11,16 @@ class MaybeLoadedRelation < SimpleDelegator
 
   # to avoid using self.class
   KLASS = self
-  LOADED_QUERY_METHODS = [:where, :pluck, :find_by, :exists?]
+  LOADED_QUERY_METHODS = [:where, :pluck, :find_by, :exists?, :take, :find]
 
   def self.abstract_database!(relation)
-    (yield new(relation)).__getobj__
+    ret = (yield new(relation))
+
+    if ret.is_a?(KLASS)
+      ret.__getobj__
+    else
+      ret
+    end
   end
 
   # can be any object, but usually it's a relation
@@ -94,6 +100,16 @@ class MaybeLoadedRelation < SimpleDelegator
 
   def self.loaded_exists?(relation)
     relation.any?
+  end
+
+  def self.loaded_take(relation)
+    relation[0]
+  end
+
+  def self.loaded_find(relation, id)
+    relation.select do |obj|
+      obj.id == id
+    end.first.tap{|ret| raise ActiveRecord::RecordNotFound.new("MaybeLoadedRelation: Couldn't find record with given id=#{id}") if ret.nil?}
   end
 
   raise "You need to define all LOADED_QUERY_METHODS!" if LOADED_QUERY_METHODS.any? {|method| !self.respond_to? "loaded_#{method}"}
